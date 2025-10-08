@@ -2,14 +2,20 @@ const fs = require('fs');
 const path = require('path');
 const express = require('express');
 const csv = require('csv-parser');
+const { Pool } = require('pg');
 require('dotenv').config();
-
-
-// app.get('/convert', handleConvert);
-// app.post('/convert', handleConvert);
 
 const app = express();
 app.use(express.json());
+
+// PostgreSQL connection
+const pool = new Pool({
+  host: process.env.PGHOST,
+  user: process.env.PGUSER,
+  password: process.env.PGPASSWORD,
+  database: process.env.PGDATABASE,
+  port: process.env.PGPORT,
+});
 
 /**
  * Helper: create nested objects from dot notation keys.
@@ -56,7 +62,30 @@ async function parseCSV(filePath) {
 }
 
 /**
- * Shared function for both GET and POST routes
+ * Generate and log age distribution report
+ */
+function generateAgeReport(users) {
+  const groups = { '<20': 0, '20-40': 0, '40-60': 0, '>60': 0 };
+  const total = users.length || 1;
+
+  users.forEach(user => {
+    const age = user.age;
+    if (age < 20) groups['<20']++;
+    else if (age <= 40) groups['20-40']++;
+    else if (age <= 60) groups['40-60']++;
+    else groups['>60']++;
+  });
+
+  console.log('\n📊 Age Distribution Report');
+  console.log('--------------------------');
+  Object.entries(groups).forEach(([range, count]) => {
+    const percent = ((count / total) * 100).toFixed(2);
+    console.log(`${range}: ${percent}%`);
+  });
+}
+
+/**
+ * Main conversion and DB insertion logic
  */
 async function handleConvert(req, res) {
   try {
@@ -70,15 +99,41 @@ async function handleConvert(req, res) {
     }
 
     const records = await parseCSV(filePath);
+    const users = [];
+
+    for (const record of records) {
+      const firstName = record.name?.firstName || '';
+      const lastName = record.name?.lastName || '';
+      const name = `${firstName} ${lastName}`.trim();
+      const age = parseInt(record.age, 10);
+      if (isNaN(age)) continue;
+
+      const address = record.address || null;
+
+      const additional_info = { ...record };
+      delete additional_info.name;
+      delete additional_info.age;
+      delete additional_info.address;
+
+      // Insert into PostgreSQL
+      await pool.query(
+        `INSERT INTO users (name, age, address, additional_info)
+         VALUES ($1, $2, $3, $4)`,
+        [name, age, address, JSON.stringify(additional_info)]
+      );
+
+      users.push({ name, age });
+    }
+
+    generateAgeReport(users);
 
     return res.status(200).json({
-      message: '✅ CSV successfully converted to JSON',
-      totalRecords: records.length,
-      data: records,
+      message: '✅ CSV uploaded and data inserted successfully',
+      totalRecords: users.length,
     });
   } catch (err) {
-    console.error('❌ Conversion failed:', err);
-    res.status(500).json({ error: 'Failed to convert CSV to JSON' });
+    console.error('❌ Conversion or DB operation failed:', err);
+    res.status(500).json({ error: 'Failed to process CSV file' });
   }
 }
 
