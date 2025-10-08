@@ -17,10 +17,6 @@ const pool = new Pool({
   port: process.env.PGPORT,
 });
 
-/**
- * Helper: create nested objects from dot notation keys.
- * Example: "user.name.first" → { user: { name: { first: value } } }
- */
 function setNested(obj, path, value) {
   const keys = path.split('.');
   let current = obj;
@@ -34,9 +30,6 @@ function setNested(obj, path, value) {
   });
 }
 
-/**
- * Parse a CSV file into an array of nested JSON objects.
- */
 async function parseCSV(filePath) {
   return new Promise((resolve, reject) => {
     const records = [];
@@ -61,9 +54,6 @@ async function parseCSV(filePath) {
   });
 }
 
-/**
- * Generate and log age distribution report
- */
 function generateAgeReport(users) {
   const groups = { '<20': 0, '20-40': 0, '40-60': 0, '>60': 0 };
   const total = users.length || 1;
@@ -76,7 +66,7 @@ function generateAgeReport(users) {
     else groups['>60']++;
   });
 
-  console.log('\n📊 Age Distribution Report');
+  console.log('\n Age Distribution Report');
   console.log('--------------------------');
   Object.entries(groups).forEach(([range, count]) => {
     const percent = ((count / total) * 100).toFixed(2);
@@ -84,9 +74,6 @@ function generateAgeReport(users) {
   });
 }
 
-/**
- * Main conversion and DB insertion logic
- */
 async function handleConvert(req, res) {
   try {
     const fileName = process.env.CSV_FILE_NAME || 'users.csv';
@@ -132,20 +119,14 @@ async function handleConvert(req, res) {
       totalRecords: users.length,
     });
   } catch (err) {
-    console.error('❌ Conversion or DB operation failed:', err);
+    console.error(' Conversion or DB operation failed:', err);
     res.status(500).json({ error: 'Failed to process CSV file' });
   }
 }
 
-/**
- * Routes
- */
 app.get('/convert', handleConvert);
 app.post('/convert', handleConvert);
 
-/**
- * Start server
- */
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
