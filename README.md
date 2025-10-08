@@ -1,6 +1,6 @@
 # 📦 CSV to JSON Converter API
 
-This project is a simple **Node.js + Express** application that converts CSV files into structured **JSON format**.  
+This project is a  **JavaScript + Node.js + Express** application that converts CSV files into structured **JSON format**.  
 It’s designed to read CSV files (from a local folder) and expose the converted data via a **REST API** endpoint that you can access both from your browser and Postman.
 
 ---
